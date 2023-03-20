@@ -35,7 +35,7 @@ const textPrettier = (text: string) => {
 };
 
 const fetchFees = async () => {
-  if (cached && cachedAt && new Date().getTime() - cachedAt.getTime() >= 1000 * 60) {
+  if (cached && cachedAt && new Date().getTime() - cachedAt.getTime() <= 1000 * 60) {
     return cached;
   }
 
