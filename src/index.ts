@@ -182,7 +182,7 @@ const checkTransactionsJob = async () => {
 
 const runJobInterval = async (fn: () => Promise<void>, ms: number) => {
   await fn().catch();
-  setInterval(async () => { await runJobInterval(fn, ms) }, ms);
+  setTimeout(async () => { await runJobInterval(fn, ms) }, ms);
 }
 
 runJobInterval(checkFeesJob, 1000 * 60 * 1);
