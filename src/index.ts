@@ -48,10 +48,13 @@ const textPrettier = (text: string) => {
  return text.at(0)?.toUpperCase() + text.slice(1, text.length).split('F').join(' F');
 };
 
-const fetchTransaction = async (txId: string) => {
+const fetchTransaction = async (txId: string): Promise<TransactionApiResponse | undefined> => {
   const response = await fetch('https://mempool.space/api/tx/' + txId);
-  const data: TransactionApiResponse = await response.json();
-  return data;
+  if (response.status === 200) {
+    const data: TransactionApiResponse = await response.json();
+    return data;
+  }
+  return undefined;
 }
 
 const fetchFees = async () => {
@@ -113,6 +116,10 @@ bot.command(['tx', 'transaction'], async ctx => {
     return;
   }
   const transaction = await fetchTransaction(txId);
+  if (!transaction) {
+    await ctx.reply('Could not fetch tx data. Are you sure it is valid?');
+    return;
+  }
   if (transaction.status.confirmed) {
     await ctx.reply('Transaction already confirmed!\n\n' + 'https://mempool.space/tx/' + txId);
     return;
@@ -157,7 +164,7 @@ const checkTransactionsJob = async () => {
   const unconfirmedTransactions = await Transactions.findMany({ confirmed: false });
   for await (const unconfirmedTransaction of unconfirmedTransactions) {
     const transaction = await fetchTransaction(unconfirmedTransaction.txId);
-    if (transaction.status.confirmed) {
+    if (transaction && transaction.status.confirmed) {
       const message = `Your tx has been <b>confirmed</b> on block <b>${transaction.status.block_height}</b>!\n\n` + 'https://mempool.space/tx/' + unconfirmedTransaction.txId;
       await bot.api.sendMessage(unconfirmedTransaction.telegram_id, message, { parse_mode: 'HTML' });
       await Transactions.updateOne(unconfirmedTransaction, { confirmed: true });
