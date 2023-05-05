@@ -67,9 +67,10 @@ const fetchFees = async () => {
 }
 
 bot.command("start", async ctx => {
-  let message = 'Hi! Welcome to the BitcoinFeesAlert bot.\n\n'
-  message += 'Use the command /alert X, where X is the Bitcoin fee in vbyte that you want to be notified about (economy fees only, for now).\n\n'
-  message += 'You can also use /tx XXXX, where XXXX is the id of the transaction you want to get notified about when its confirmed.'
+  let message = 'Hi! Welcome to the Bitcoin Fees Alert bot.\n\n'
+  message += 'Use the command /alert X, where X is the Bitcoin fee in vbyte that you want to be notified about ("hour fees" only, for now).\n\n'
+  message += 'You can also use /tx XXXX, where XXXX is the id of the transaction you want to get notified about when its confirmed.\n'
+  message += 'Or use /fees to get current fees.'
   await ctx.reply(message);
 });
 
@@ -86,7 +87,7 @@ bot.command("alert", async ctx => {
   } else {
     userAlert = await Alerts.insertOne({
       telegram_id: String(ctx.chat.id),
-      feeType: 'economyFee',
+      feeType: 'hourFee',
       feeAmount,
     });
   }
@@ -130,30 +131,15 @@ bot.command(['tx', 'transaction'], async ctx => {
   await ctx.reply(`I will let you know when your transaction gets confirmed!\n\n` + 'https://mempool.space/tx/' + txId);
 })
 
-await bot.api.setMyCommands([
-  {
-    command: '/alert',
-    description: 'Use /alert X to get notified when economy fees <= X'
-  },
-  {
-    command: '/fees',
-    description: 'What are the fees looking like right now?'
-  },
-  {
-    command: '/tx',
-    description: 'Use /tx XXXXX to get notified when your transaction gets confirmed'
-  }
-])
-
 bot.start();
 
 const checkFeesJob = async () => {
   const fees = await fetchFees();
-  const alerts = await Alerts.findMany({ feeAmount: moreThanOrEqual(fees.economyFee) });
+  const alerts = await Alerts.findMany({ feeAmount: moreThanOrEqual(fees.hourFee) });
 
   const feesNotificationsToSend = alerts.map(async alert => {
     console.log('New notification', alert);
-    let message = `Economy fees have dropped below <b>${alert.feeAmount} sats/vbyte</b>!\n\n<b>Current fees:</b>\n\n`;
+    let message = `Hour fees have dropped below <b>${alert.feeAmount} sats/vbyte</b>!\n\n<b>Current fees:</b>\n\n`;
     message += Object.entries(fees).map(([type, value]) => `${textPrettier(type)}: ${value} sats/vbyte`).join('\n');
     message += '\n\nAlerts have been disabled. Enable then again with <pre>/alert X</pre>.'
     await bot.api.sendMessage(alert.telegram_id, message, { parse_mode: 'HTML' });
