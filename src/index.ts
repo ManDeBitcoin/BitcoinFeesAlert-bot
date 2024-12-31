@@ -70,17 +70,17 @@ const fetchFees = async () => {
 }
 
 bot.command("start", async ctx => {
-  let message = 'Hi! Welcome to the Bitcoin Fees Alert bot.\n\n'
-  message += 'Use the command /alert X, where X is the Bitcoin fee in vbyte that you want to be notified about ("hour fees" only, for now).\n\n'
-  message += 'You can also use /tx XXXX, where XXXX is the id of the transaction you want to get notified about when its confirmed.\n'
-  message += 'Or use /fees to get current fees.'
+  let message = '¡Hola! Bienvenido al bot de alertas de tarifas de Bitcoin.\n\n'
+  message += 'Usa el comando /alert X, donde X es la tarifa de Bitcoin en vbyte sobre la que deseas recibir notificaciones (solo "fees por hora" por ahora).\n\n'
+  message += 'También puedes usar /tx XXXX, donde XXXX es el ID de la transacción que deseas que te notifique cuando sea confirmada.\n'
+  message += 'O usa /fees para obtener las tarifas actuales.'
   await ctx.reply(message);
 });
 
 bot.command("alert", async ctx => {
   const feeAmount = Number(ctx.match);
   if (Number.isNaN(feeAmount) || feeAmount === 0) {
-    await ctx.reply('Looks like you gave me an invalid number. Could you try again?\n\nExample: <pre>/alert 5</pre>', { parse_mode: 'HTML' });
+    await ctx.reply('Parece que me diste un número no válido. ¿Podrías intentarlo de nuevo?\n\nEjemplo: <pre>/alert 5</pre>', { parse_mode: 'HTML' });
     return;
   }
   let userAlert = await Alerts.findOne({ telegram_id: String(ctx.chat.id) });
@@ -94,13 +94,13 @@ bot.command("alert", async ctx => {
       feeAmount,
     });
   }
-  console.log('New alert', userAlert);
-  await ctx.reply(`I will let you know when fees go below ${feeAmount} sat/vbyte.`);
+  console.log('Nueva alerta', userAlert);
+  await ctx.reply(`Te avisaré cuando las tarifas bajen de ${feeAmount} sat/vbyte.`);
 })
 
 bot.command("fees", async ctx => {
   const fees = await fetchFees();
-  let message = '<b>Current fees:</b>\n\n';
+  let message = '<b>Tarifas actuales:</b>\n\n';
   message += Object.entries(fees).map(([type, value]) => `${textPrettier(type)}: ${value} sats/vbyte`).join('\n');
   await bot.api.sendMessage(ctx.chat.id, message, { parse_mode: 'HTML' });
 });
@@ -108,25 +108,25 @@ bot.command("fees", async ctx => {
 bot.command(['tx', 'transaction'], async ctx => {
   const txId = ctx.match;
   if (!txId) {
-    await ctx.reply('Missing tx id... try again.');
+    await ctx.reply('Falta el ID de la transacción... inténtalo de nuevo.');
     return;
   }
   if (txId.length <= 50) {
-    await ctx.reply('Tx id looks invalid... try again.');
+    await ctx.reply('El ID de la transacción parece no ser válido... inténtalo de nuevo.');
     return;
   }
   const transaction = await fetchTransaction(txId);
   if (!transaction) {
-    await ctx.reply('Could not fetch tx data. Are you sure it is valid?');
+    await ctx.reply('No se pudo obtener información de la transacción. ¿Estás seguro de que es válida?');
     return;
   }
   if (transaction.status.confirmed) {
-    await ctx.reply('Transaction already confirmed!\n\n' + 'https://mempool.space/tx/' + txId);
+    await ctx.reply('¡La transacción ya está confirmada!\n\n' + 'https://mempool.space/tx/' + txId);
     return;
   }
   let tx = await Transactions.findOne({ telegram_id: String(ctx.chat.id), txId });
   if (tx) {
-    await ctx.reply('You are already tracking this transaction.');
+    await ctx.reply('Ya estás rastreando esta transacción.');
     return;
   }
   tx = await Transactions.insertOne({
@@ -134,8 +134,8 @@ bot.command(['tx', 'transaction'], async ctx => {
     txId,
     confirmed: false,
   })
-  console.log('New transaction', tx);
-  await ctx.reply(`I will let you know when your transaction gets confirmed!\n\n` + 'https://mempool.space/tx/' + txId);
+  console.log('Nueva transacción', tx);
+  await ctx.reply(`Te avisaré cuando tu transacción sea confirmada!\n\n` + 'https://mempool.space/tx/' + txId);
 })
 
 bot.start();
@@ -145,10 +145,10 @@ const checkFeesJob = async () => {
   const alerts = await Alerts.findMany({ feeAmount: moreThanOrEqual(fees.hourFee) });
 
   const feesNotificationsToSend = alerts.map(async alert => {
-    console.log('New notification', alert);
-    let message = `Hour fees have dropped below <b>${alert.feeAmount} sats/vbyte</b>!\n\n<b>Current fees:</b>\n\n`;
+    console.log('Nueva notificación', alert);
+    let message = `¡Las tarifas por hora han bajado de <b>${alert.feeAmount} sats/vbyte</b>!\n\n<b>Tarifas actuales:</b>\n\n`;
     message += Object.entries(fees).map(([type, value]) => `${textPrettier(type)}: ${value} sats/vbyte`).join('\n');
-    message += '\n\nAlerts have been disabled. Enable then again with <pre>/alert X</pre>.'
+    message += '\n\nLas alertas han sido desactivadas. Actívalas de nuevo con <pre>/alert X</pre>.'
     await bot.api.sendMessage(alert.telegram_id, message, { parse_mode: 'HTML' });
     await Alerts.deleteOne(alert);
   });
@@ -156,7 +156,7 @@ const checkFeesJob = async () => {
   const results = await Promise.allSettled(feesNotificationsToSend) as PromiseRejectedResult[];
   const failed = results.filter(result => result.status === 'rejected');
   if (failed.length > 0) {
-    console.warn(`${failed.length} promises failed, reasons:`, failed.map(failed => failed.reason));
+    console.warn(`${failed.length} promesas fallaron, razones:`, failed.map(failed => failed.reason));
   }
 }
 
